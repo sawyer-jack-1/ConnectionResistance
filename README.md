@@ -6,7 +6,7 @@ MATLAB files for implementing/testing various approaches to connection graph res
 
 This directory contains all of the Graph Laplacian tools I've written or used for this project and others.
 
-## manopt
+## util/manopt
 
 This directory contains an instance of the manopt package. Adding it to path will enable its usage. Contains some examples.
 
