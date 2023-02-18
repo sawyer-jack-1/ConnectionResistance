@@ -1,0 +1,11 @@
+graph:
+  directed: False
+  edge_info: [[0, 1, 1], [1, 2, 1], [2, 0, 1], [2, 3, 1], [3, 4, 1], [4, 5, 1], [5, 6, 1], [6, 7, 1], [7, 4, 1]]
+  is_eig: True
+  numNodes: 8
+connectionGraph:
+  connectionDim: 2  # Options are [2, 3]
+  edgeRotations: [[90, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+optimizer:
+  g_type: 'g_opt'  # Options are ['g_opt', 'g_init', 'g_evec']
+
