@@ -1,0 +1,10 @@
+graph:
+  directed: False
+  edge_info: [[0, 1, 2], [1, 2, 3], [1, 3, 3], [2, 3, 3], [3, 0, 3]]
+  is_eig: False
+  numNodes: 4
+connectionGraph:
+  connectionDim: 3  # Options [2,3]
+  edgeRotations: [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+optimizer:
+  g_type: 'g_opt'  # Options are ['g_opt', 'g_init']
