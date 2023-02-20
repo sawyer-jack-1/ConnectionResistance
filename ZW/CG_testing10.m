@@ -58,7 +58,7 @@ A
 fprintf('===================================\n');
 
 DIM_CONNECTION = 3;
-% CONNECTION_MATRIX = [-1 0; 0 -1];
+% CONNECTION_MATRIX = [-1 0 0; 0 0 1; 0 -1 0];
 % CONNECTION_MATRIX = [ 0 1; 1 0];
 
 CONNECTION_MATRIX = RandOrthMat(DIM_CONNECTION);
@@ -79,20 +79,26 @@ G = G.setEdgeConnection(firstEdge(1), firstEdge(2), CONNECTION_MATRIX);
 fprintf('\nConnection Resistance between nodes as e_ij^T L^+ e_ij');
 
 connectionResistanceMatrix = zeros(G.nNodes);
+decoupledResistanceMatrix = zeros(G.nNodes);
 
 for i=1:G.nNodes
     for j=1:G.nNodes
         if i ~= j
+            %new resistance
             [E1, E2] = meanPath(G, [i,j]);
             Z = zeros(DIM_CONNECTION *  G.nNodes,DIM_CONNECTION);
             Z(1 + (i-1)*DIM_CONNECTION:i*DIM_CONNECTION, :)=E1;
             Z(1 + (j-1)*DIM_CONNECTION:j*DIM_CONNECTION, :)=-E2;
-            R_mtx = Z'*pinv(G.connectionLaplacian)*Z
+            R_mtx = Z'*pinv(G.connectionLaplacian)*Z;
             connectionResistanceMatrix(i,j) = norm(R_mtx,2);
+
+            %decoupled
+            [c, O] = decoupledConductanceMtx(G, [i,j]);
+            decoupledResistanceMatrix(i,j) = 1/(c -norm(O,2));
         end     
     end      
 end
-
+decoupledResistanceMatrix
 connectionResistanceMatrix
 
 fprintf('\nStandard Resistance between nodes as e_ij^T L^+ e_ij');
@@ -193,8 +199,8 @@ function [E1, E2] = meanPath(connectionGraphX, testEdge)
         DIM_CONNECTION = connectionGraphX.dimConnection;
         
         schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
-        C1 = schurComplementConductance(1:DIM_CONNECTION,1:DIM_CONNECTION)
-        C2 = schurComplementConductance(1:DIM_CONNECTION, DIM_CONNECTION+1:2*DIM_CONNECTION)
+        C1 = schurComplementConductance(1:DIM_CONNECTION,1:DIM_CONNECTION);
+        C2 = schurComplementConductance(1:DIM_CONNECTION, DIM_CONNECTION+1:2*DIM_CONNECTION);
 %         T = pinv(C1)-pinv(C2)
         r = getBasicResistance(connectionGraphX, testEdge);
         deg = connectionGraphX.graphLaplacian(testEdge(1),testEdge(1));
@@ -202,6 +208,17 @@ function [E1, E2] = meanPath(connectionGraphX, testEdge)
         I = eye(DIM_CONNECTION);
         E1 = C1 - deg*I;
         E1 = E1 / (1/r - deg);
+end
+
+function [c,O] = decoupledConductanceMtx(connectionGraphX, testEdge)
+        DIM_CONNECTION = connectionGraphX.dimConnection;
+        
+        schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
+        
+        c = 1/getBasicResistance(connectionGraphX, testEdge);
+        I = eye(DIM_CONNECTION);
+        C = c*[I -I;-I I];
+        O = schurComplementConductance - C;
 end
 
 function S = SchurComp(A,ind)
