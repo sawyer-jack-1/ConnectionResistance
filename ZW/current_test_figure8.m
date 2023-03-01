@@ -27,14 +27,13 @@ plot(G.graphObject);
 title('Plot of random graph G');
 
 resistanceMatrix = zeros(G.nNodes);
-
+conductanceMatrix = zeros(G.nNodes);
 for i=1:G.nNodes
     
     for j=1:G.nNodes
         if i ~= j
-            
             resistanceMatrix(i,j) = getBasicResistance(G, [i,j]);
- 
+            conductanceMatrix(i,j) = 1/getBasicResistance(G, [i,j]);
         end     
     end      
 end
@@ -83,48 +82,19 @@ fprintf('\nConnection Resistance between nodes as e_ij^T L^+ e_ij');
 connectionResistanceMatrix = zeros(G.nNodes);
 newResistanceMatrix1 = zeros(G.nNodes);
 newResistanceMatrix2 = zeros(G.nNodes);
+ConductanceMtx = zeros(G.nNodes);
 for i=1:G.nNodes
     for j=1:G.nNodes
         if i ~= j
-            D = detConductance(G, [i,j]);
-            n
+            i
+            j
+            [currentViaC, currentViaO] = currentAtEndPoint(G,[i,j])
         end     
     end      
 end
 % decoupledResistanceMatrix
 % connectionResistanceMatrix
 
-newResistanceMatrix2
-checkTriangleInequality(newResistanceMatrix2)
-% newResistanceMatrix1
-
-fprintf('\nStandard Resistance between nodes as e_ij^T L^+ e_ij');
-
-% resistanceMatrix
-% checkTriangleInequality(resistanceMatrix)
-
-% fprintf('===================================\n');
-
-% fprintf('\nConnection Resistance DISTANCE sqrt(R^sigma_ij)');
-
-% connectionResistanceMatrix.^(1/2);
-
-[V,D] = eig(G.connectionLaplacian);
-v1 = V(firstEdge(1),:);
-v2 = V(firstEdge(2),:);
-
-d = (v1 - v2).^2;
-d(1) = 0;
-%d(2) = 0;
-d;
-
-lambda = diag(D);
-lambda = lambda.^(-1);
-lambda(1) = 0;
-%lambda(2) = 0;
-lambda;
-
-lambda.'*(d');
 
 
 %% Resistance Functions
@@ -218,15 +188,28 @@ function [E1, E2] = meanPath(connectionGraphX, testEdge)
         E1 = E1 / (1/r - deg);
 end
 
-function C = newConductanceMtx(connectionGraphX, testEdge)
-        [E1, E2] = meanPath(connectionGraphX, testEdge);
+function [currentViaC, currentViaO] = currentAtEndPoint(connectionGraphX, testEdge)
         DIM_CONNECTION = connectionGraphX.dimConnection;
-        
-        schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
-        C1 = schurComplementConductance(1:DIM_CONNECTION,1:DIM_CONNECTION);
-        C2 = schurComplementConductance(DIM_CONNECTION+1:2*DIM_CONNECTION, 1:DIM_CONNECTION);
-
-        C = (C1 - E2*C2)/2;
+        L = connectionGraphX.connectionLaplacian;
+        A = SchurComp(L,[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
+        C1 = A(1:DIM_CONNECTION,1:DIM_CONNECTION);
+        C2 = A(DIM_CONNECTION+1:2*DIM_CONNECTION,1:DIM_CONNECTION);
+%         T = pinv(C1)-pinv(C2)
+        currentViaC = pinv(C1)*C2;
+        i = testEdge(1);
+        j = (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION;
+        [~,w] = size(L);
+        jc = setdiff(1:w,j);
+        Sba = L(jc,j);
+        Sbb = L(jc,jc);
+        % The following formula was supposed to be Saa-Sab * pinv(Sbb) * Sba
+        % However, we use lsqminnorm(A,b) to efficiently implement pinv(A)*b
+        S = -pinv(Sbb) * Sba
+        if i<testEdge(2)
+            currentViaO = S((i-1)*DIM_CONNECTION+1:i*DIM_CONNECTION, : )';
+        else
+            currentViaO = S((i-2)*DIM_CONNECTION+1:(i-1)*DIM_CONNECTION, : )';
+        end
 end
 
 function D = detConductance(connectionGraphX, testEdge)
@@ -237,31 +220,7 @@ function D = detConductance(connectionGraphX, testEdge)
         D = nonzero_eigenvalue_product(schurComplementConductance);
 end
 
-function [DET, TRACE] = checkPSD(connectionGraphX, testEdge)
-    DIM_CONNECTION = connectionGraphX.dimConnection;
-        
-        schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
-%         T = pinv(C1)-pinv(C2)
-        r = getBasicResistance(connectionGraphX, testEdge);
-        deg = connectionGraphX.graphLaplacian(testEdge(1),testEdge(1));
-        
-        I = eye(DIM_CONNECTION);
-        Z = 1/r * [I -I; -I I];
-        
-        DET = det(schurComplementConductance - Z);
-        TRACE = trace(schurComplementConductance - Z);
-end
 
-function [c,O] = decoupledConductanceMtx(connectionGraphX, testEdge)
-        DIM_CONNECTION = connectionGraphX.dimConnection;
-        
-        schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
-        
-        c = 1/getBasicResistance(connectionGraphX, testEdge);
-        I = eye(DIM_CONNECTION);
-        C = c*[I -I;-I I];
-        O = schurComplementConductance - C;
-end
 
 function S = SchurComp(A,ind)
 % Author   : Zhengchao Wan
@@ -288,14 +247,14 @@ end
 % Fix the randSig and then run code a bunch of times to see how it behaves.
 
 function product = nonzero_eigenvalue_product(A)
-% This function takes in a matrix A and returns the product of all its
-% nonzero eigenvalues.
-
+% This function takes in a matrix A and an error tolerance tol, and returns
+% the product of all its nonzero eigenvalues.
+tol = 1e-6;
 % Calculate the eigenvalues of A
 eigenvalues = eig(A);
 
-% Filter out the zero eigenvalues
-nonzero_eigenvalues = eigenvalues(eigenvalues ~= 0);
+% Filter out the eigenvalues that are smaller than the error tolerance
+nonzero_eigenvalues = eigenvalues(abs(eigenvalues) > tol);
 
 % Calculate the product of the nonzero eigenvalues
 product = prod(nonzero_eigenvalues);
