@@ -195,7 +195,7 @@ function [currentViaC, currentViaO] = currentAtEndPoint(connectionGraphX, testEd
         C1 = A(1:DIM_CONNECTION,1:DIM_CONNECTION);
         C2 = A(DIM_CONNECTION+1:2*DIM_CONNECTION,1:DIM_CONNECTION);
 %         T = pinv(C1)-pinv(C2)
-        currentViaC = pinv(C1)*C2;
+        currentViaC = C2*pinv(C1);
         i = testEdge(1);
         j = (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION;
         [~,w] = size(L);
@@ -204,7 +204,7 @@ function [currentViaC, currentViaO] = currentAtEndPoint(connectionGraphX, testEd
         Sbb = L(jc,jc);
         % The following formula was supposed to be Saa-Sab * pinv(Sbb) * Sba
         % However, we use lsqminnorm(A,b) to efficiently implement pinv(A)*b
-        S = -pinv(Sbb) * Sba
+        S = pinv(Sbb) * Sba;
         if i<testEdge(2)
             currentViaO = S((i-1)*DIM_CONNECTION+1:i*DIM_CONNECTION, : )';
         else
