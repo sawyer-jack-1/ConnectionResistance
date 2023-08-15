@@ -4,8 +4,8 @@ graph:
   is_eig: True
   numNodes: 8
 connectionGraph:
-  connectionDim: 2  # Options are [2, 3]
-  edgeRotations: [[90, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+  connectionDim: 3  # Options are [2, 3]
+  edgeRotations: [[0, 0, 0], [90, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
 optimizer:
   g_type: 'g_opt'  # Options are ['g_opt', 'g_init', 'g_evec']
 

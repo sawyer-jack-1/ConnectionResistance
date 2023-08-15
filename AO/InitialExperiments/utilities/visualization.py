@@ -30,8 +30,9 @@ def plot_graph_with_effective_resistance(graph, effective_resistance, folder, ti
     folder = os.path.join('Figures', folder)
     Path(folder).mkdir(parents=True, exist_ok=True)
     fig.savefig(os.path.join(folder, f'{title}.pdf'), format='pdf')
+    fig.savefig(os.path.join(folder, f'{title}.png'), format='png')
 
-def plot_effective_resistance(standardER, connectionERsync, Rsval_sc12, Rsub_sc11sc12, folder):
+def plot_effective_resistance(standardER, Rsync, Reig, Rtrace, Rdet, Rsub, folder):
     num_nodes = standardER.shape[0]
     fig, ax = plt.subplots(2, 4, figsize=(15, 7))
     i=0
@@ -41,9 +42,11 @@ def plot_effective_resistance(standardER, connectionERsync, Rsval_sc12, Rsub_sc1
             j += 1
             i = 0
         df = pd.DataFrame({'ER': standardER[node_nr, :],
-                           'CRsync': connectionERsync[node_nr, :],
-                          'CRsval_sc12': Rsval_sc12[node_nr, :],
-                          'CRsub_sc11sc12': Rsub_sc11sc12[node_nr, :]
+                           'CRsync': Rsync[node_nr, :],
+                          'Reig': Reig[node_nr, :],
+                          'Rtrace': Rtrace[node_nr, :],
+                          #'Rdet': Rdet[node_nr, :],
+                          'Rsub': Rsub[node_nr, :]
                            }
                           )
 
@@ -60,3 +63,4 @@ def plot_effective_resistance(standardER, connectionERsync, Rsval_sc12, Rsub_sc1
     folder = os.path.join('Figures', folder)
     Path(folder).mkdir(parents=True, exist_ok=True)
     fig.savefig(os.path.join(folder, 'CR_vs_ER.pdf'), format='pdf')
+    fig.savefig(os.path.join(folder, 'CR_vs_ER.png'), format='png')

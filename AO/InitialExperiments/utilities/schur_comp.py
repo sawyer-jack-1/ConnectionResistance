@@ -1,5 +1,5 @@
 import numpy as np
-from utilities.rotation_matrices import Rxyz
+from utilities.util import nonzero_eigenvalue_product
 
 def schur_comp(M, indices, indices_comp):
     A = M[np.ix_(indices, indices)]
@@ -14,14 +14,17 @@ def schur_comp_er(M, Xu, Xv, indices, indices_comp):
     sc12 = np.dot(Xu.transpose(), np.dot(sc, Xv))
     sc11 = np.dot(Xu.transpose(), np.dot(sc, Xu))
 
+    positive_det = nonzero_eigenvalue_product(sc)
 
-    Rsub_sc11sc12 = np.linalg.norm(np.linalg.pinv((sc11 - sc12)/2), 2)
+    Rtrace = 1/np.trace(sc)
+    Rdet = 1/(np.power(positive_det, 1 / 3) / 2)
+    Rsub = np.linalg.norm(np.linalg.pinv((sc11 - sc12)/2), 2)
 
     u, s, vh = np.linalg.svd(sc12)
     dim = Xu.shape[1]
     if dim == 1:
-        Rsc = 1/s[0]
+        Reig = 1/s[0]
     elif dim > 1:
-        Rsc = 2/(s[0]+s[1])
+        Reig = 2/(s[0]+s[1])
 
-    return Rsc, Rsub_sc11sc12
+    return Reig, Rtrace, Rdet, Rsub

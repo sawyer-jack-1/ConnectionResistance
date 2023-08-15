@@ -85,8 +85,11 @@ class ConnectionGraph(BaseGraph):
         self.edgeRotations = self.config['connectionGraph']['edgeRotations']
 
         self.connection_incidence_matrix = self.construct_connection_incidence_matrix()
+        self.connection_incidence_matrix_markfan = self.construct_connection_incidence_matrix_markfan()
         self.connection_laplacian = self.construct_connection_laplacian()
+        self.connection_laplacian_markfan = self.construct_connection_laplacian_markfan()
         self.pinv_connection_laplacian = self.construct_pinv_connection_laplacian()
+        self.pinv_connection_laplacian_markfan = self.construct_pinv_connection_laplacian_markfan()
         self.set_edge_labels()
 
     def get_connectionDim(self):
@@ -98,14 +101,29 @@ class ConnectionGraph(BaseGraph):
     def get_numNodes(self):
         return self.numNodes
 
-    def get_connection_incidence_matrix(self):
-        return self.connection_incidence_matrix
-
     def get_connection_laplacian(self):
         return self.connection_laplacian
 
+    def get_connection_laplacian_markfan(self):
+        return self.connection_laplacian_markfan
+
+    def get_connection_incidence_matrix(self):
+        return self.connection_incidence_matrix
+
     def get_pinv_connection_laplacian(self):
         return self.pinv_connection_laplacian
+
+    def get_pinv_connection_laplacian_markfan(self):
+        return self.pinv_connection_laplacian_markfan
+
+    def get_connection_incidence_matrix_markfan(self):
+        return self.connection_incidence_matrix_markfan
+
+    def get_connection_laplacian_markfan(self):
+        return self.connection_laplacian_markfan
+
+    def get_pinv_connection_laplacian_markfan(self):
+        return self.pinv_connection_laplacian_markfan
 
     def get_eigenvectors(self, i=None):
         if i !=None:
@@ -152,8 +170,26 @@ class ConnectionGraph(BaseGraph):
                 connection_incidence_matrix[e_start:e_stop, j_start:j_stop] = - Rx2D(self.edgeRotations[edge_nr][0])
             elif self.connectionDim == 3:
                 connection_incidence_matrix[e_start:e_stop, j_start:j_stop] = - Rxyz(self.edgeRotations[edge_nr])
-
         return connection_incidence_matrix
+
+    def construct_connection_incidence_matrix_markfan(self):
+        connection_incidence_matrix_markfan = np.zeros((self.numEdges * self.connectionDim, self.numNodes * self.connectionDim))
+        for edge_nr, edge_rot in enumerate(self.edgeRotations):
+            e_start = edge_nr * self.connectionDim
+            e_stop = (edge_nr+1) * self.connectionDim
+            i_start = self.edges[edge_nr][0] * self.connectionDim
+            i_stop = (self.edges[edge_nr][0] + 1) * self.connectionDim
+            j_start = self.edges[edge_nr][1] * self.connectionDim
+            j_stop = (self.edges[edge_nr][1] + 1) * self.connectionDim
+
+            if self.connectionDim == 1:
+                connection_incidence_matrix_markfan[e_start:e_stop, i_start:i_stop] = Rx1D(self.edgeRotations[edge_nr][0])
+            elif self.connectionDim == 2:
+                connection_incidence_matrix_markfan[e_start:e_stop, i_start:i_stop] = Rx2D(self.edgeRotations[edge_nr][0])
+            elif self.connectionDim == 3:
+                connection_incidence_matrix_markfan[e_start:e_stop, i_start:i_stop] = Rxyz(self.edgeRotations[edge_nr])
+            connection_incidence_matrix_markfan[e_start:e_stop, j_start:j_stop] = - np.diag(np.ones(self.connectionDim))
+        return connection_incidence_matrix_markfan
 
     def construct_connection_laplacian(self):
         edge_weights = self.get_edge_weights()
@@ -161,8 +197,17 @@ class ConnectionGraph(BaseGraph):
         v = np.dot(edge_weights_extended, self.connection_incidence_matrix)
         return np.dot(self.connection_incidence_matrix.transpose(), v)
 
+    def construct_connection_laplacian_markfan(self):
+        edge_weights = self.get_edge_weights()
+        edge_weights_extended = np.diag(np.repeat(edge_weights, repeats=self.connectionDim))
+        v = np.dot(edge_weights_extended, self.connection_incidence_matrix_markfan)
+        return np.dot(self.connection_incidence_matrix_markfan.transpose(), v)
+
     def construct_pinv_connection_laplacian(self):
         return scipy.linalg.pinv(self.connection_laplacian, rcond=10**(-10))
+
+    def construct_pinv_connection_laplacian_markfan(self):
+        return scipy.linalg.pinv(self.connection_laplacian_markfan, rcond=10**(-10))
 
     def get_graph_for_visualization(self):
         return self.graph_for_visualization
