@@ -6,24 +6,18 @@ clc;
 
 %%
 
-NODES = 4;
+NODES = 10;
+DIM_SAMPLES = 2;
+SPARSITY = 1;
+METHOD = "Square";
+POSITIONS = [];
 
-%DIM_SAMPLES = 2;
-%SPARSITY = 1;
-%METHOD = "Square";
-%POSITIONS = [];
-%G = RandomDotProductGraph(NODES, DIM_SAMPLES, SPARSITY, METHOD, POSITIONS);
-
-G = GraphX.cycleGraphX(NODES);
-A0 = G.adjacencyMatrix;
-A0(1,3) = 1;
-A0(3,1) = 1;
-G = GraphX(A0);
+G = RandomDotProductGraph(NODES, DIM_SAMPLES, SPARSITY, METHOD, POSITIONS);
 
 tiledlayout(1,2);
 
 nexttile;
-plot(G.graphObject);
+G.draw()
 title('Plot of random graph G');
 
 resistanceMatrix = zeros(G.nNodes);
@@ -44,12 +38,12 @@ imagesc(resistanceMatrix);
 colorbar;
 title('Color plot of the standard resistance matrix');
 
-firstEdge = find(full(G.graphLaplacian),2,'first').'
-
-fprintf(strcat('test edge: \n', num2str(firstEdge)));
-
-fprintf('\nStandard conductance formula for i,j:');
-resistanceMatrix(firstEdge(1),firstEdge(2))^(-1)
+firstEdge = find(full(G.graphLaplacian),2,'first').';
+% 
+% fprintf(strcat('test edge: \n', num2str(firstEdge)));
+% 
+% fprintf('\nStandard conductance formula for i,j:');
+% resistanceMatrix(firstEdge(1),firstEdge(2))^(-1)
 
 fprintf('Schur complement matrix L_{e^c,e^c}:');
 A = SchurComp(full(G.graphLaplacian),firstEdge);
@@ -57,78 +51,61 @@ A
 
 fprintf('===================================\n');
 
-DIM_CONNECTION = 3;
-% CONNECTION_MATRIX = [-1 0 0; 0 0 1; 0 -1 0];
-% CONNECTION_MATRIX = [ 0 1; 1 0];
+DIM_CONNECTION = 2;
+%CONNECTION_MATRIX = [0, 1; 1,0];
 
 CONNECTION_MATRIX = RandOrthMat(DIM_CONNECTION);
 
 G = ConnectionGraphX(G,DIM_CONNECTION);
 G = G.setEdgeConnection(firstEdge(1), firstEdge(2), CONNECTION_MATRIX);
 
-% firstEdge = [2, 3];
-% fprintf('\nTest edge: {2,3} ');
-% 
-% fprintf('\nStandard conductance formula for i,j:');
-% resistanceMatrix(firstEdge(1),firstEdge(2))^(-1)
-% 
-% fprintf('\nConn. Schur complement matrix L_{e^c,e^c}:');
-% A = SchurComp(full(G.connectionLaplacian),[firstEdge(1)*DIM_CONNECTION-1, firstEdge(1)*DIM_CONNECTION, firstEdge(2)*DIM_CONNECTION-1, firstEdge(2)*DIM_CONNECTION]);
-% A
-
 fprintf('\nConnection Resistance between nodes as e_ij^T L^+ e_ij');
 
-connectionResistanceMatrix = zeros(G.nNodes);
-decoupledResistanceMatrix = zeros(G.nNodes);
+newResistanceMatrix = zeros(G.nNodes);
+newResistanceMatrix1 = zeros(G.nNodes);
 
 for i=1:G.nNodes
     for j=1:G.nNodes
         if i ~= j
-            %new resistance
-            [E1, E2] = meanPath(G, [i,j]);
-            Z = zeros(DIM_CONNECTION *  G.nNodes,DIM_CONNECTION);
-            Z(1 + (i-1)*DIM_CONNECTION:i*DIM_CONNECTION, :)=E1;
-            Z(1 + (j-1)*DIM_CONNECTION:j*DIM_CONNECTION, :)=-E2;
-            R_mtx = Z'*pinv(G.connectionLaplacian)*Z;
-            connectionResistanceMatrix(i,j) = norm(R_mtx,2);
+            C = newConductanceMtx(G, [i,j]);
+            newResistanceMatrix(i,j) = norm(pinv(C),2);
+            newResistanceMatrix1(i,j) = 1/ norm(C,2);
+%             %new resistance
+%             [E1, E2] = meanPath(G, [i,j]);
+%             Z = zeros(DIM_CONNECTION *  G.nNodes,DIM_CONNECTION);
+%             Z(1 + (i-1)*DIM_CONNECTION:i*DIM_CONNECTION, :)=E1;
+%             Z(1 + (j-1)*DIM_CONNECTION:j*DIM_CONNECTION, :)=-E2;
+%             R_mtx = Z'*pinv(G.connectionLaplacian)*Z;
+%             connectionResistanceMatrix(i,j) = norm(R_mtx,2);
 
-            %decoupled
-            [c, O] = decoupledConductanceMtx(G, [i,j]);
-            decoupledResistanceMatrix(i,j) = 1/(c -norm(O,2));
+%             %decoupled
+%             [c, O] = decoupledConductanceMtx(G, [i,j]);
+%             decoupledResistanceMatrix(i,j) = 1/(c -norm(O,2));
         end     
     end      
 end
-decoupledResistanceMatrix
-connectionResistanceMatrix
+% decoupledResistanceMatrix
+% connectionResistanceMatrix
 
-fprintf('\nStandard Resistance between nodes as e_ij^T L^+ e_ij');
+% newResistanceMatrix
+checkTriangleInequality(newResistanceMatrix)
+% newResistanceMatrix1
+checkTriangleInequality(newResistanceMatrix1)
+checkTriangleInequality(resistanceMatrix)
 
-resistanceMatrix
+% firstEdge = [25, 50];
+% 
+% fprintf('\nStandard conductance formula for i,j:');
+% resistanceMatrix(firstEdge(1),firstEdge(2))^(-1)
+% 
+% fprintf('Conn. Schur complement matrix L_{e^c,e^c}:');
+% A = SchurComp(full(G.connectionLaplacian),[firstEdge(1)*DIM_CONNECTION-1, firstEdge(1)*DIM_CONNECTION, firstEdge(2)*DIM_CONNECTION-1, firstEdge(2)*DIM_CONNECTION]);
+% A
+% 
+% trace(A) / (2*DIM_CONNECTION)
 
-% fprintf('===================================\n');
-
-% fprintf('\nConnection Resistance DISTANCE sqrt(R^sigma_ij)');
-
-connectionResistanceMatrix.^(1/2);
-
-[V,D] = eig(G.connectionLaplacian);
-v1 = V(firstEdge(1),:);
-v2 = V(firstEdge(2),:);
-
-d = (v1 - v2).^2;
-d(1) = 0;
-%d(2) = 0;
-d;
-
-lambda = diag(D);
-lambda = lambda.^(-1);
-lambda(1) = 0;
-%lambda(2) = 0;
-lambda;
-
-lambda.'*(d');
-
-
+% eg = eig(G.connectionLaplacian);
+% eg(1:5)
 %% Resistance Functions
 
 function r = getBasicResistance(connectionGraphX, testEdge)
@@ -185,14 +162,30 @@ function r = resistanceValueSchur(connectionGraphX, testEdge, theta)
 
 end
 
-function r = traceConnectionResistance(connectionGraphX, testEdge)
+function r = resistanceValue(connectionGraphX, testEdge, theta)
 
-        DIM_CONNECTION = connectionGraphX.dimConnection;
+        d = 1;
+        dimConnection_ = connectionGraphX.dimConnection;
+        n = connectionGraphX.nNodes;
+
+        i = testEdge(1);
+        j = testEdge(2);
+
+        randSig1 = [cosd(theta), -sind(theta) ; sind(theta), cosd(theta)];
+        connectionGraphX = connectionGraphX.setEdgeConnection(i, j, randSig1);
+        L_inv = pinv(connectionGraphX.connectionLaplacian);
+
+        edge_synchronization_map = connectionGraphX.connectionEigenvectors(:,1:d);
         
-        schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[testEdge(1)*DIM_CONNECTION-1, testEdge(1)*DIM_CONNECTION, testEdge(2)*DIM_CONNECTION-1, testEdge(2)*DIM_CONNECTION]);
+        displacement_vector = zeros( n * dimConnection_, d);
+        displacement_vector( dimConnection_*(i-1) + 1: i * dimConnection_, :) = edge_synchronization_map(dimConnection_*(i-1) + 1: i * dimConnection_,:);
+        displacement_vector( dimConnection_*(j-1) + 1: j * dimConnection_, :) = -edge_synchronization_map(dimConnection_*(j-1) + 1: j * dimConnection_,:);
         
-        r = (1 / (2 * DIM_CONNECTION) * trace(schurComplementConductance) )^(-1);
-        
+        displacement_vector = sqrt(2) * displacement_vector ./ (norm(displacement_vector, 'fro'));
+
+        r = norm(displacement_vector' * L_inv * displacement_vector, "fro");
+
+
 end
 
 function [E1, E2] = meanPath(connectionGraphX, testEdge)
@@ -208,6 +201,17 @@ function [E1, E2] = meanPath(connectionGraphX, testEdge)
         I = eye(DIM_CONNECTION);
         E1 = C1 - deg*I;
         E1 = E1 / (1/r - deg);
+end
+
+function C = newConductanceMtx(connectionGraphX, testEdge)
+        [E1, E2] = meanPath(connectionGraphX, testEdge);
+        DIM_CONNECTION = connectionGraphX.dimConnection;
+        
+        schurComplementConductance = SchurComp(full(connectionGraphX.connectionLaplacian),[(testEdge(1)-1)*DIM_CONNECTION+1: testEdge(1)*DIM_CONNECTION, (testEdge(2)-1)*DIM_CONNECTION+1: testEdge(2)*DIM_CONNECTION]);
+        C1 = schurComplementConductance(1:DIM_CONNECTION,1:DIM_CONNECTION);
+        C2 = schurComplementConductance(DIM_CONNECTION+1:2*DIM_CONNECTION, 1:DIM_CONNECTION);
+
+        C = (C1 - E2*C2)/2;
 end
 
 function [c,O] = decoupledConductanceMtx(connectionGraphX, testEdge)
